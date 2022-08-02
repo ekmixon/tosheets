@@ -72,7 +72,7 @@ def get_credentials():
         flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
         flow.user_agent = APPLICATION_NAME
         credentials = tools.run_flow(flow, store)
-        print('Storing credentials to ' + credential_path)
+        print(f'Storing credentials to {credential_path}')
     return credentials
 
 # creates a new sheet with the chosen Name
@@ -162,8 +162,9 @@ def dummyConvert(x):
 
 # If the given ID looks like a full URL instead of an ID, extract the ID
 def canonicalizeSpreadsheetId(spreadsheetId):
-    match = re.match('^https?://docs.google.com/spreadsheets/d/([^/]+)', spreadsheetId)
-    if match:
+    if match := re.match(
+        '^https?://docs.google.com/spreadsheets/d/([^/]+)', spreadsheetId
+    ):
         return match.groups()[0]
 
     return spreadsheetId
@@ -171,7 +172,7 @@ def canonicalizeSpreadsheetId(spreadsheetId):
 
 def main():
     version = pkg_resources.require('tosheets')[0].version
-    arguments = docopt(doc, version='tosheets ' + str(version))
+    arguments = docopt(doc, version=f'tosheets {str(version)}')
 
     spreadsheetId = arguments['--spreadsheet']
     newSheetName = arguments['--new-sheet']
@@ -180,7 +181,7 @@ def main():
         spreadsheetId = canonicalizeSpreadsheetId(spreadsheetId)
 
     if spreadsheetId is None and newSheetName is None:
-        if not "TOSHEETS_SPREADSHEET" in os.environ:
+        if "TOSHEETS_SPREADSHEET" not in os.environ:
             print("TOSHEETS_SPREADSHEET is not set and --spreadsheet was not given")
             exit(1)
         spreadsheetId = os.environ['TOSHEETS_SPREADSHEET']
@@ -192,10 +193,12 @@ def main():
     sheet = arguments['-s']
 
     if sheet is None:
-        if not "TOSHEETS_SHEET" in os.environ:
-            sheet = ""
-        else:
-            sheet = os.environ['TOSHEETS_SHEET'] + "!"
+        sheet = (
+            os.environ['TOSHEETS_SHEET'] + "!"
+            if "TOSHEETS_SHEET" in os.environ
+            else ""
+        )
+
     else:
         sheet += "!"
 
@@ -211,9 +214,10 @@ def main():
 
     reader = csv.reader(input_fd, delimiter=separator, quotechar=quote)
 
-    values = []
-    for line in reader:
-        values.append(list(map(dummyConvert if keep else tryToConvert, line)))
+    values = [
+        list(map(dummyConvert if keep else tryToConvert, line))
+        for line in reader
+    ]
 
     update = arguments['-u']
     if update is False:
@@ -221,8 +225,7 @@ def main():
     else:
         updateSheet(values, spreadsheetId, sheet + cell)
 
-    should_open = arguments['--open'] or False
-    if should_open:
+    if should_open := arguments['--open'] or False:
         webbrowser.open(SHEET_URL_FMT % spreadsheetId)
 
 
